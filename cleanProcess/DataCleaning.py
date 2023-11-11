@@ -87,6 +87,9 @@ class GetData:
         # Dropping useless columns.
         cleaned_data = cleaned_data.drop(columns_remove, axis=1)
 
+        #Dropping outliers
+        cleaned_data = cleaned_data[cleaned_data["number_gestation"] <= 15]
+
         # Fill Nan valus for number_gestation.
         cleaned_data['number_gestation'] = cleaned_data['number_gestation'].fillna(0)
 
