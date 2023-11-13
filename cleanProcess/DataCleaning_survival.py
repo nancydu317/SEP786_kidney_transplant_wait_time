@@ -1,0 +1,120 @@
+# Libraries
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import MinMaxScaler
+
+
+# Settings
+path_to_csv = "../waitlist_kidney_brazil.csv"
+columns_to_remove = ["Id", 
+                     "date", 
+                    "age_cat",
+                    "cPRA_cat",
+                     "prior_transplant",
+                     "gestation",
+                    "calculated_frequency_DR.f1",
+                    "calculated_frequency_DR.f2",
+                    "calculated_frequency_DR.f",
+                    "calculated_frequency_B.f1",
+                    "calculated_frequency_B.f2",
+                    "calculated_frequency_B.f",
+                    "calculated_frequency_A.f1",
+                    "calculated_frequency_A.f2",
+                    "calculated_frequency_A.f",
+                    "date_acutal",
+                    "Time_death",
+                    "X36MthsTx",
+                    "priorization",
+                    "razon_removed",
+                    "Time_Tx",
+                    "patient_still_on_list",
+                    "Transplant",
+                    "removed_list",
+                    "death",
+                    "event"]
+# updated to removed prior_transplant, gestation and event
+# Transplant_Y_N will be kept as the survival status outcome variable
+
+port_to_english = {
+    'Não' :False, 
+    'Sim' :True, 
+    'Maior.60' :'>60', 
+    '18.a.60' :'Between_18_60', 
+    'Menor.18' :'<18', 
+    'Branca' :'White', 
+    'Parda' :'Brown', 
+    'Negra' :'Black', 
+    'Amarela' :'Yellow', 
+    'Entre_50_80' :'Between_50_80', 
+    'Entre_0_50' :'Between_0_50', 
+    'Maior_80' :'More_80', 
+    'Óbito Lista' :'Death_list', 
+    'heterozigoto' :'heterozygous', 
+    'homozigoto' :'homozygous', 
+    'Outras' : 'Others'
+}
+
+def encode_binary_columns(dataframe):
+    """Encode all binaries columns."""
+    le = LabelEncoder()
+    for column in dataframe.columns:
+        if dataframe[column].nunique() == 2 and column != 'Transplant_Y_N':
+            dataframe[column] = le.fit_transform(dataframe[column])
+    return dataframe
+
+def one_hot_encode(dataframe):
+    """ Function to apply one-hot encoding to categorical columns."""
+    categorical_columns = dataframe.select_dtypes(include=['object']).columns
+    dataframe = pd.get_dummies(dataframe, columns=categorical_columns)
+    return dataframe
+
+class GetDataSurvival:
+    """A simple example class"""
+    def __init__(self, path = path_to_csv):
+        self.raw_data = pd.read_csv(path)
+        self.cleaned_data = self.get_cleaned_data()
+    
+    def get_cleaned_data(self, 
+                     columns_remove = columns_to_remove, 
+                     dict_portuguese_english = port_to_english,
+                     removenan = True):
+        """Remove uselles columns, translate portuguese to English."""
+        cleaned_data = self.raw_data.copy()
+
+        #Translating Portuguese to English
+        for portuguese,english in dict_portuguese_english.items():
+            cleaned_data.replace(to_replace= portuguese, value= english, inplace=True)
+
+        # Keeping People that did got a surgery and people who did not but are still alive and on the waitlist.
+        # cleaned_data = cleaned_data[(cleaned_data['Transplant'] == True) | ((cleaned_data['death'] == False) & (cleaned_data['event'] == 0))]
+        # do not filter dataset for survival analysis. Patients who were removed, are still on waitlist, or died are right-censored
+
+        # Dropping useless columns.
+        cleaned_data = cleaned_data.drop(columns_remove, axis=1)
+        
+        # Fill Nan valus for number_gestation.
+        cleaned_data['number_gestation'] = cleaned_data['number_gestation'].fillna(0)
+        
+        #Dropping outliers
+        cleaned_data = cleaned_data[cleaned_data['number_gestation'] <= 15]
+
+        if removenan == True:
+            return cleaned_data.dropna()
+        return cleaned_data
+    
+    def get_encoded_data(self):
+        #Encode binary
+        tempdf = encode_binary_columns(self.cleaned_data)
+
+        #one_hot_encode for categorical values
+        tempdf = one_hot_encode(tempdf)
+
+        #Get rid of redundant dummy variables
+        tempdf = tempdf.drop(['race_Yellow','Blood_type_AB','subregion_UNICAMP','underline_disease_Diabetes'], axis=1)
+        
+        return tempdf
+    
+
+if __name__ == '__main__':
+    Data = GetDataSurvival()
+    print(Data.get_encoded_data())
