@@ -8,8 +8,8 @@ from sklearn.preprocessing import MinMaxScaler
 path_to_csv = "../waitlist_kidney_brazil.csv"
 columns_to_remove = ["Id", 
                      "date", 
-                    "age_cat",
-                    "cPRA_cat",
+                    "age_at_list_registration",
+                    "cPRA",
                      "prior_transplant",
                      "gestation",
                     "calculated_frequency_DR.f1",
@@ -109,8 +109,13 @@ class GetDataSurvival:
         #one_hot_encode for categorical values
         tempdf = one_hot_encode(tempdf)
 
-        #Get rid of redundant dummy variables
-        tempdf = tempdf.drop(['race_Yellow','Blood_type_AB','subregion_UNICAMP','underline_disease_Diabetes'], axis=1)
+        #Get rid of redundant dummy variables representing the most common conditions in the population
+        tempdf = tempdf.drop(['race_White',
+                              'Blood_type_A',
+                              'subregion_FUNDERP',
+                              'underline_disease_Diabetes',
+                              'age_cat_Between_18_60',
+                             'cPRA_cat_Zero'], axis=1)
         
         return tempdf
     
